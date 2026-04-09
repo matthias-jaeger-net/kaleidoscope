@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Gyro Kaleidoscope</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <style>
+            html,
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                background: black;
+            }
+            canvas {
+                position: fixed;
+                top: 0;
+                left: 0;
+            }
+        </style>
+    </head>
+    <body>
+        <video id="video" autoplay playsinline style="display: none"></video>
+        <canvas id="canvas"></canvas>
+
+        <script>
+            const video = document.getElementById("video");
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+
+            let rotation = 0; // base rotation from gyro
+            let slices = 12; // number of kaleidoscope wedges
+            let mirror = true; // mirror every other wedge
+
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            window.addEventListener("resize", resize);
+            resize();
+
+            // Access the camera
+            async function startCamera() {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "environment" },
+                    audio: false,
+                });
+                video.srcObject = stream;
+            }
+
+            // Handle device orientation
+            window.addEventListener("deviceorientation", (event) => {
+                // Use gamma (tilt left/right) and beta (tilt forward/back)
+                const gamma = event.gamma || 0; // left/right tilt
+                const beta = event.beta || 0; // front/back tilt
+
+                // Map angles to rotation (radians)
+                rotation = (gamma / 180) * Math.PI;
+            });
+
+            function drawKaleidoscope() {
+                const w = canvas.width;
+                const h = canvas.height;
+                const size = Math.max(w, h);
+                const angle = (Math.PI * 2) / slices;
+
+                ctx.clearRect(0, 0, w, h);
+
+                for (let i = 0; i < slices; i++) {
+                    ctx.save();
+                    ctx.translate(w / 2, h / 2);
+                    ctx.rotate(rotation + i * angle);
+
+                    if (mirror && i % 2 === 0) ctx.scale(1, -1);
+
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.arc(0, 0, size, -angle / 2, angle / 2);
+                    ctx.closePath();
+                    ctx.clip();
+
+                    ctx.drawImage(video, -size / 2, -size / 2, size, size);
+                    ctx.restore();
+                }
+
+                requestAnimationFrame(drawKaleidoscope);
+            }
+
+            video.addEventListener("play", drawKaleidoscope);
+            startCamera();
+        </script>
+    </body>
+</html>
