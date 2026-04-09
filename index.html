@@ -17,20 +17,33 @@
                 top: 0;
                 left: 0;
             }
+            #startBtn {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                padding: 20px 40px;
+                font-size: 20px;
+                background: white;
+                border: none;
+                border-radius: 10px;
+            }
         </style>
     </head>
     <body>
         <video id="video" autoplay playsinline style="display: none"></video>
         <canvas id="canvas"></canvas>
+        <button id="startBtn">Start Kaleidoscope</button>
 
         <script>
             const video = document.getElementById("video");
             const canvas = document.getElementById("canvas");
             const ctx = canvas.getContext("2d");
+            const startBtn = document.getElementById("startBtn");
 
-            let rotation = 0; // base rotation from gyro
-            let slices = 12; // number of kaleidoscope wedges
-            let mirror = true; // mirror every other wedge
+            let rotation = 0;
+            let slices = 12;
+            let mirror = true;
 
             function resize() {
                 canvas.width = window.innerWidth;
@@ -39,7 +52,7 @@
             window.addEventListener("resize", resize);
             resize();
 
-            // Access the camera
+            // request camera
             async function startCamera() {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { facingMode: "environment" },
@@ -48,15 +61,38 @@
                 video.srcObject = stream;
             }
 
-            // Handle device orientation
-            window.addEventListener("deviceorientation", (event) => {
-                // Use gamma (tilt left/right) and beta (tilt forward/back)
-                const gamma = event.gamma || 0; // left/right tilt
-                const beta = event.beta || 0; // front/back tilt
+            // request gyro
+            function requestGyroPermission() {
+                if (
+                    typeof DeviceOrientationEvent !== "undefined" &&
+                    typeof DeviceOrientationEvent.requestPermission ===
+                        "function"
+                ) {
+                    DeviceOrientationEvent.requestPermission()
+                        .then((response) => {
+                            if (response === "granted") {
+                                window.addEventListener(
+                                    "deviceorientation",
+                                    handleOrientation,
+                                );
+                            } else {
+                                alert("Gyro permission denied!");
+                            }
+                        })
+                        .catch(console.error);
+                } else {
+                    // older browsers
+                    window.addEventListener(
+                        "deviceorientation",
+                        handleOrientation,
+                    );
+                }
+            }
 
-                // Map angles to rotation (radians)
+            function handleOrientation(event) {
+                const gamma = event.gamma || 0;
                 rotation = (gamma / 180) * Math.PI;
-            });
+            }
 
             function drawKaleidoscope() {
                 const w = canvas.width;
@@ -86,8 +122,12 @@
                 requestAnimationFrame(drawKaleidoscope);
             }
 
-            video.addEventListener("play", drawKaleidoscope);
-            startCamera();
+            startBtn.addEventListener("click", async () => {
+                startBtn.style.display = "none";
+                await startCamera();
+                requestGyroPermission();
+                video.addEventListener("play", drawKaleidoscope);
+            });
         </script>
     </body>
 </html>
