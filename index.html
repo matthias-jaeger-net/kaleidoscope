@@ -132,6 +132,13 @@
                 video.srcObject = stream;
             }
 
+            cameraBtn.onclick = async () => {
+                facingMode =
+                    facingMode === "environment" ? "user" : "environment";
+
+                await startCamera();
+            };
+
             // gyro
             function requestGyroPermission() {
                 if (
